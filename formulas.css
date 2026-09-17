@@ -1,0 +1,148 @@
+.equation-box {
+  margin: 14px 0;
+  padding: 13px;
+  background: #081613;
+  border: 1px solid #285048;
+  border-radius: 11px;
+}
+.equation-title {
+  color: var(--mint);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .1em;
+  margin-bottom: 9px;
+}
+.equation-box #equations { display: grid; gap: 7px; }
+.equation-box #equations > div {
+  display: grid;
+  grid-template-columns: 22px 1fr;
+  align-items: start;
+  gap: 7px;
+}
+.equation-box #equations span {
+  display: grid;
+  place-items: center;
+  width: 19px;
+  height: 19px;
+  border-radius: 50%;
+  background: #17372f;
+  color: var(--mint);
+  font-size: 9px;
+}
+.equation-box code {
+  padding: 0;
+  background: none;
+  border: 0;
+  color: #d5f0ea;
+  line-height: 1.7;
+}
+.variables {
+  padding: 10px 12px;
+  border-left: 2px solid #315c52;
+  background: rgba(8,22,19,.5);
+}
+.variables b { font-size: 10px; color: #b7cec8; }
+.variables p { margin: 4px 0 0; color: var(--muted); font-size: 10px; }
+.variables i { color: #bceee4; font-style: normal; }
+.budget-formula { margin-top: 12px; padding: 20px; }
+.budget-formula .panel-title { margin-bottom: 12px; }
+.formula-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+.formula-grid code {
+  display: block;
+  padding: 12px 14px;
+  background: #081613;
+  border: 1px solid #23463e;
+  border-radius: 9px;
+  color: #d8f4ed;
+  font-size: 12px;
+}
+@media (max-width: 760px) {
+  .formula-grid { grid-template-columns: 1fr; }
+  .budget-formula { padding: 16px; }
+}
+.presets button.featured {
+  border-color: var(--mint);
+  color: var(--mint);
+  box-shadow: inset 0 0 0 1px rgba(61,217,197,.12);
+}
+.hero {
+  display: block;
+  margin-bottom: 34px;
+}
+.hero > div:first-child {
+  max-width: 900px;
+}
+.hero h1 {
+  max-width: 900px;
+}
+.preset-wrap {
+  width: 100%;
+  margin-top: 26px;
+}
+.presets {
+  justify-content: flex-start;
+  max-width: 100%;
+}
+.chart-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0 2px;
+}
+.chart-summary span {
+  padding: 6px 10px;
+  border: 1px solid #24463f;
+  border-radius: 999px;
+  color: #8fa9a2;
+  background: rgba(7,21,18,.62);
+  font-size: 10px;
+}
+.chart-summary b { color: #d9eee9; margin-left: 4px; }
+.chart-summary b.positive { color: var(--lime); }
+.chart-summary b.negative { color: var(--red); }
+#curve .zone { pointer-events: none; }
+#curve .reliable-zone { fill: rgba(61,217,197,.035); }
+#curve .marginal-zone { fill: rgba(255,202,104,.075); }
+#curve .outage-zone { fill: rgba(255,114,114,.055); }
+#curve .zone-label { font-size: 10px; font-weight: 800; letter-spacing: .08em; }
+#curve .reliable-text { fill: rgba(61,217,197,.56); }
+#curve .marginal-text { fill: rgba(255,202,104,.68); }
+#curve .outage-text { fill: rgba(255,114,114,.62); }
+#curve .line-label { font-size: 10px; font-weight: 700; paint-order: stroke; stroke: #0e211d; stroke-width: 4px; }
+#curve .planned-label { fill: #ffca68; }
+#curve .threshold-label { fill: #9eb0ac; }
+#curve .range-marker { stroke: #ffca68; stroke-width: 1.5; stroke-dasharray: 3 5; opacity: .78; }
+#curve .range-label { fill: #ffca68; font-size: 10px; font-weight: 700; paint-order: stroke; stroke: #0e211d; stroke-width: 4px; }
+#curve .current-guide { stroke: #3dd9c5; stroke-width: 1; stroke-dasharray: 2 5; opacity: .38; }
+#curve .current-label { fill: #e5f7f2; font-size: 11px; font-weight: 800; paint-order: stroke; stroke: #0e211d; stroke-width: 4px; }
+#curve .current-margin { fill: #3dd9c5; font-size: 10px; font-weight: 700; paint-order: stroke; stroke: #0e211d; stroke-width: 4px; }
+.detail-chips {
+  display: grid;
+  gap: 9px;
+  margin-top: 4px;
+}
+.diag-group {
+  display: grid;
+  grid-template-columns: 84px 1fr;
+  gap: 10px;
+  align-items: start;
+}
+.diag-group > strong {
+  color: #6f8b84;
+  font-size: 9px;
+  letter-spacing: .08em;
+  padding-top: 7px;
+}
+.diag-group > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.detail-chips .diag-group span {
+  padding: 5px 8px;
+  background: rgba(7,21,18,.72);
+}
+@media (max-width: 760px) {
+  .diag-group { grid-template-columns: 1fr; gap: 4px; }
+  #curve .line-label, #curve .zone-label { display: none; }
+}
