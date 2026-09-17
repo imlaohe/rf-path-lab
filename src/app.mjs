@@ -27,7 +27,7 @@ const commonFields = [
   ['frequencyMHz', '工作频率', 'MHz', 0.01, '决定波长与自由空间损耗，也是模型适用性判断的关键。'],
   ['bandwidthKhz', '接收噪声带宽', 'kHz', 0.1, '带宽扩大 10 倍，热噪声增加 10 dB。短波语音可从约 2.4–3 kHz 起，宽带信道可按实际值填写。'],
   ['distanceKm', '当前距离', 'km', 0.1, '用于顶部结果卡和预算分解。'],
-  ['plotMaxKm', '曲线最大距离', 'km', 1, '控制右侧距离探索范围。'],
+  ['plotMaxKm', '曲线基准范围（下限）', 'km', 1, '距离探索图的基准上限；为保证能看到门限距离，实际绘图范围会自动扩展，本值不会限制可用距离。'],
   ['txGainDbi', '发射天线增益', 'dBi', 0.1, '相对各向同性天线的方向增益。'],
   ['rxGainDbi', '接收天线增益', 'dBi', 0.1, '接收方向上的有效增益。'],
   ['txFeedLossDb', '发射馈线损耗', 'dB', 0.1, '功放到天线之间的电缆、开关与匹配损耗。'],
@@ -55,7 +55,7 @@ const modelFields = {
   hata_urban: [['txHeightM', '基站天线高度', 'm', 1, 'Hata 典型范围为 30–200 m。'], ['rxHeightM', '移动台天线高度', 'm', 0.1, 'Hata 典型范围为 1–10 m。']],
   hata_suburban: [['txHeightM', '基站天线高度', 'm', 1, 'Hata 典型范围为 30–200 m。'], ['rxHeightM', '移动台天线高度', 'm', 0.1, 'Hata 典型范围为 1–10 m。']],
   hata_open: [['txHeightM', '基站天线高度', 'm', 1, 'Hata 典型范围为 30–200 m。'], ['rxHeightM', '移动台天线高度', 'm', 0.1, 'Hata 典型范围为 1–10 m。']],
-  cost231: [['txHeightM', '基站天线高度', 'm', 1, '建议 30–200 m。'], ['rxHeightM', '移动台天线高度', 'm', 0.1, '建议 1–10 m。'], ['largeCity', '大城市修正', '', 1, '启用时增加 3 dB 的 COST-231 大城市修正。', 'checkbox']],
+  cost231: [['txHeightM', '基站天线高度', 'm', 1, '建议 30–200 m。'], ['rxHeightM', '移动台天线高度', 'm', 0.1, '建议 1–10 m。'], ['largeCity', '大城市修正', '', 1, '启用时改用大城市 a(h_m) 修正，并叠加 3 dB 的城市中心修正 C_m。', 'checkbox']],
   egli: [['txHeightM', '发射天线高度', 'm', 0.1, 'Egli 公式内部自动换算为 ft。'], ['rxHeightM', '接收天线高度', 'm', 0.1, 'Egli 公式内部自动换算为 ft。']],
   knife_edge: [
     ['txHeightM', '发射天线高度', 'm', 0.1, '用于无线电视距与菲涅耳区诊断。'],
@@ -152,7 +152,14 @@ function renderFields() {
 function bindInputs() {
   $$('[data-key]').forEach((input) => {
     input.addEventListener('input', () => {
-      state[input.dataset.key] = input.type === 'checkbox' ? input.checked : Number(input.value);
+      if (input.type === 'checkbox') {
+        state[input.dataset.key] = input.checked;
+      } else {
+        // 清空输入框时 Number('') === 0，会把频率等参数静默变成 0 并让损耗算成 NaN，
+        // 所以空值必须显式记为 NaN，由 update()/renderChart() 统一按无效参数处理。
+        const raw = input.value.trim();
+        state[input.dataset.key] = raw === '' ? NaN : Number(raw);
+      }
       update();
     });
   });
@@ -190,6 +197,15 @@ function renderChart(maxLinkDistance) {
   }).filter(p => Number.isFinite(p.y));
   const threshold = calculate(state).effectiveSensitivityDbm;
   const planned = threshold + Number(state.requiredFadeMarginDb);
+  // 参数非法（例如频率被清空或填 0）时一个采样点都算不出来。必须在此提前返回，
+  // 否则下方模板里的 points.at(-1) 会读取空数组的属性并抛出 TypeError，图表从此停止刷新。
+  if (!points.length || !Number.isFinite(threshold) || !Number.isFinite(planned)
+    || !Number.isFinite(state.distanceKm)) {
+    $('#chart-summary').innerHTML = '<span>参数无效：请确认工作频率与当前距离均为大于 0 的数。</span>';
+    svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+    svg.innerHTML = `<text x="${width / 2}" y="${height / 2}" text-anchor="middle" class="axis-label">参数无效：无法绘制曲线</text>`;
+    return;
+  }
   const ys = [...points.map(p => p.y), threshold, planned];
   let yMin = Math.floor((Math.min(...ys) - 8) / 10) * 10;
   let yMax = Math.ceil((Math.max(...ys) + 8) / 10) * 10;
@@ -239,14 +255,18 @@ function renderChart(maxLinkDistance) {
 
 function update() {
   const r = calculate(state);
-  const maxD = findMaxDistance(state, modelSearchLimit());
+  const searchCapKm = modelSearchLimit();
+  const maxD = findMaxDistance(state, searchCapKm);
   const [label, cls] = statusFor(r.designMarginDb);
   $('#status').className = `status ${cls}`;
   $('#status').textContent = label;
   $('#margin').textContent = `${nfmt(r.designMarginDb)} dB`;
   $('#received').textContent = `${nfmt(r.receivedDbm)} dBm`;
   $('#loss').textContent = `${nfmt(r.modelLossDb)} dB`;
-  $('#range').textContent = maxD == null ? '未达到' : `${nfmt(maxD, maxD < 10 ? 2 : 1)} km`;
+  // 撞到搜索上限时用 “≥” 明确标出这是被截断的下界，而不是精确算出的可用距离。
+  $('#range').textContent = maxD == null
+    ? '未达到'
+    : `${maxD >= searchCapKm * 0.999 ? '≥ ' : ''}${nfmt(maxD, maxD < 10 ? 2 : 1)} km`;
   $('#power-w').textContent = `${nfmt(dbmToWatts(state.txPowerDbm), 3)} W`;
   const meta = MODEL_META[state.model];
   $('#model-title').textContent = meta.name;
@@ -306,7 +326,8 @@ function applyPreset(name) {
     hf20: { ...actualHF, model:'hf_mixed', frequencyMHz:20, bandwidthKhz:24, externalNoiseDb:12, requiredSnrDb:8 },
     hf25: { ...actualHF, model:'hf_mixed', frequencyMHz:25, bandwidthKhz:24, externalNoiseDb:10, requiredSnrDb:8 },
     hf29: { ...actualHF, model:'hf_mixed', frequencyMHz:29, bandwidthKhz:24, externalNoiseDb:8, requiredSnrDb:8 },
-    nvis: { ...defaults, model:'hf_nvis', frequencyMHz:7.1, bandwidthKhz:3, distanceKm:300, plotMaxKm:800, virtualHeightKm:300, absorptionDbPerHop:8, requiredFadeMarginDb:15 },
+    // 7.1 MHz 的 NVIS 需要 foF2 约 8 MHz 才不触发 MUF 警告；默认 5.5 MHz 会让预设一打开就报警。
+    nvis: { ...defaults, model:'hf_nvis', frequencyMHz:7.1, bandwidthKhz:3, distanceKm:300, plotMaxKm:800, virtualHeightKm:300, absorptionDbPerHop:8, foF2MHz:8, requiredFadeMarginDb:15 },
     sky: { ...defaults, model:'hf_sky_freq', frequencyMHz:12, bandwidthKhz:3, externalNoiseDb:15, distanceKm:1500, plotMaxKm:3000, hops:2, virtualHeightKm:300, requiredFadeMarginDb:18 },
     vhf: { ...defaults, model:'two_ray', txPowerDbm:40, frequencyMHz:70, bandwidthKhz:25, noiseFigureDb:6, externalNoiseDb:3, requiredSnrDb:10, distanceKm:25, plotMaxKm:150, txGainDbi:2.15, rxGainDbi:2.15, txHeightM:15, rxHeightM:2, rxSensitivityDbm:-116, requiredFadeMarginDb:15 },
     portable: { ...defaults, model:'knife_edge', txPowerDbm:37, frequencyMHz:70, bandwidthKhz:25, noiseFigureDb:6, externalNoiseDb:3, requiredSnrDb:10, distanceKm:8, plotMaxKm:40, txGainDbi:0, rxGainDbi:0, txHeightM:1.8, rxHeightM:1.8, obstacleHeightM:3, obstaclePositionFraction:0.5, requiredFadeMarginDb:12 },
@@ -323,9 +344,15 @@ $('#reset').addEventListener('click', () => applyPreset('hf'));
 $('#copy-result').addEventListener('click', async () => {
   const r = calculate(state);
   const text = `射频链路预算｜${MODEL_META[state.model].name}\n频率 ${state.frequencyMHz} MHz｜距离 ${state.distanceKm} km\n接收功率 ${nfmt(r.receivedDbm,2)} dBm｜设计余量 ${nfmt(r.designMarginDb,2)} dB`;
-  await navigator.clipboard.writeText(text);
-  $('#copy-result').textContent = '已复制';
-  setTimeout(() => $('#copy-result').textContent = '复制结果', 1300);
+  const button = $('#copy-result');
+  try {
+    await navigator.clipboard.writeText(text);
+    button.textContent = '已复制';
+  } catch (error) {
+    // file:// 或非安全上下文下 Clipboard API 不可用，给出可操作提示而不是静默失败。
+    button.textContent = '请手动复制';
+  }
+  setTimeout(() => button.textContent = '复制结果', 1300);
 });
 
 renderModelSelect(); renderFields(); update();

@@ -38,8 +38,11 @@ export const MODEL_META = {
   cost231: {
     group: '陆地移动', name: 'COST-231 Hata', tag: '1500–2000 MHz',
     formula: 'L = 46.3 + 33.9logf − 13.82loghb − a(hm) + … + C',
-    scope: '1500–2000 MHz、1–20 km。可选中等城市或大城市修正。',
-    equations: ['L = 46.3 + 33.9log₁₀f − 13.82log₁₀h_b − a(h_m) + (44.9 − 6.55log₁₀h_b)log₁₀d + C_m']
+    scope: '1500–2000 MHz、1–20 km。启用大城市修正时，同时切换 a(h_m) 的大城市式并叠加 C_m。',
+    equations: [
+      'L = 46.3 + 33.9log₁₀f − 13.82log₁₀h_b − a(h_m) + (44.9 − 6.55log₁₀h_b)log₁₀d + C_m',
+      'a(h_m) = 3.2[log₁₀(11.75h_m)]² − 4.97（大城市）'
+    ]
   },
   egli: {
     group: '超短波 VHF', name: 'Egli 地形经验模型', tag: '40–900 MHz',
@@ -195,7 +198,11 @@ export function propagationLoss(p, distanceKm = p.distanceKm) {
     }
     case 'cost231': {
       const lf = Math.log10(f);
-      const aHm = (1.1 * lf - 0.7) * hr - (1.56 * lf - 0.8);
+      const mobileHeightM = Math.max(0.2, hr);
+      // 大城市时切换为 COST-231 的大城市移动台高度修正，而不是中小城市的 Hata 式。
+      const aHm = p.largeCity
+        ? 3.2 * (Math.log10(11.75 * mobileHeightM) ** 2) - 4.97
+        : (1.1 * lf - 0.7) * mobileHeightM - (1.56 * lf - 0.8);
       const cityCorrection = p.largeCity ? 3 : 0;
       modelLoss = 46.3 + 33.9 * lf - 13.82 * Math.log10(ht) - aHm
         + (44.9 - 6.55 * Math.log10(ht)) * Math.log10(d) + cityCorrection;
@@ -256,7 +263,9 @@ export function propagationLoss(p, distanceKm = p.distanceKm) {
     }
     case 'hf_sky_freq': {
       const geometry = skyGeometry(d, Number(p.virtualHeightKm), Number(p.hops));
-      const sinElevation = Math.max(0.15, Math.sin(geometry.elevationDeg * Math.PI / 180));
+      // 下限只用于避免数值溢出：仰角低于约 3° 时 1/sin 会剧烈放大吸收。原来的 0.15
+      // （约 8.6°）会在低仰角长路径上明显低估 D 层吸收。
+      const sinElevation = Math.max(0.05, Math.sin(geometry.elevationDeg * Math.PI / 180));
       const absorption = geometry.hops * Number(p.verticalAbsorption10MHzDb) * ((10 / f) ** 2) / sinElevation;
       const reflection = geometry.hops * Number(p.reflectionLossDbPerHop);
       modelLoss = fspl(f, geometry.totalSlantKm) + absorption + reflection;
@@ -268,7 +277,8 @@ export function propagationLoss(p, distanceKm = p.distanceKm) {
       const groundExcess = Number(p.groundAttenDbPer100Km) * ((d / 100) ** Number(p.groundExponent));
       const groundLoss = fspl(f,d) + groundExcess;
       const geometry = skyGeometry(d, Number(p.virtualHeightKm), 1);
-      const sinElevation = Math.max(0.15, Math.sin(geometry.elevationDeg * Math.PI / 180));
+      // 与 hf_sky_freq 保持同一套低仰角下限，见那里的说明。
+      const sinElevation = Math.max(0.05, Math.sin(geometry.elevationDeg * Math.PI / 180));
       const absorption = Number(p.verticalAbsorption10MHzDb) * ((10 / f) ** 2) / sinElevation;
       const skyLoss = fspl(f,geometry.totalSlantKm) + absorption + Number(p.reflectionLossDbPerHop);
       modelLoss = -10 * Math.log10((10 ** (-groundLoss/10)) + (10 ** (-skyLoss/10)));
@@ -354,11 +364,20 @@ export function findMaxDistance(p, limitKm) {
   const max = Math.max(min * 2, Number(limitKm));
   const steps = 1800;
   let farthest = null;
+  let firstFailure = null;
   for (let i = 0; i <= steps; i += 1) {
     const d = min * ((max / min) ** (i / steps));
     const r = calculate(p, d);
-    if (Number.isFinite(r.designMarginDb) && r.designMarginDb >= 0) farthest = d;
+    if (!Number.isFinite(r.designMarginDb)) continue;
+    if (r.designMarginDb >= 0) {
+      farthest = d;
+    } else if (firstFailure === null) {
+      // 记录余量首次跌破 0 的距离。若将来引入非单调的模型（相干合成、多径、
+      // 带方向图的天线），最远满足点会落在不可用区内部，此时应返回更保守的该值。
+      firstFailure = d;
+    }
   }
+  if (farthest !== null && firstFailure !== null && firstFailure < farthest) return firstFailure;
   return farthest;
 }
 

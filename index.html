@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="私有射频链路预算与传播距离探索工具">
+  <meta name="description" content="射频链路预算与传播距离探索工具：链路余量、传播模型与可用距离估算">
   <title>RF Path Lab｜射频链路预算实验台</title>
   <link rel="stylesheet" href="./styles.css">
   <link rel="stylesheet" href="./formulas.css">
@@ -12,13 +12,13 @@
   <div class="shell">
     <header>
       <div class="brand"><span class="brand-mark">RF</span><div><b>Path Lab</b><small>射频链路预算实验台</small></div></div>
-      <div class="header-actions"><span class="private-pill"><i></i>仅你可访问</span><button id="reset" class="ghost">重置</button></div>
+      <div class="header-actions"><span class="private-pill"><i></i>公开静态站点 · GitHub Pages</span><button id="reset" class="ghost">重置</button></div>
     </header>
 
     <main>
       <section class="hero">
         <div><span class="eyebrow">LINK BUDGET · PROPAGATION · RANGE</span><h1>把链路余量，变成<br><em>看得见的距离。</em></h1><p>针对短波与超短波优化：带宽、外部噪声、电离层、无线电视距和绕射均参与链路判决。</p></div>
-        <div class="preset-wrap"><span>短波实测频段 · 25 km / 站点高差 200 m</span><div class="presets"><button data-preset="actual25" class="featured">实测 · 10 MHz / 24 kHz</button><button data-preset="hf2">2 MHz</button><button data-preset="hf4">4 MHz</button><button data-preset="hf7">7 MHz</button><button data-preset="hf10">10 MHz</button><button data-preset="hf15">15 MHz</button><button data-preset="hf20">20 MHz / 24 kHz</button><button data-preset="hf25">25 MHz / 24 kHz</button><button data-preset="hf29">29 MHz / 24 kHz</button><button data-preset="nvis">NVIS 7.1 MHz</button><button data-preset="sky">多跳 12 MHz</button><button data-preset="vhf">VHF 70 MHz</button></div></div>
+        <div class="preset-wrap"><span>快速预设 · 短波实测频段 / NVIS / 天波 / VHF / UHF</span><div class="presets"><button data-preset="actual25" class="featured">实测 · 10 MHz / 24 kHz</button><button data-preset="hf2">2 MHz</button><button data-preset="hf4">4 MHz</button><button data-preset="hf7">7 MHz</button><button data-preset="hf10">10 MHz</button><button data-preset="hf15">15 MHz</button><button data-preset="hf20">20 MHz / 24 kHz</button><button data-preset="hf25">25 MHz / 24 kHz</button><button data-preset="hf29">29 MHz / 24 kHz</button><button data-preset="nvis">NVIS 7.1 MHz</button><button data-preset="sky">多跳 12 MHz</button><button data-preset="vhf">VHF 70 MHz</button><button data-preset="portable">便携 70 MHz</button><button data-preset="repeater">中继 150 MHz</button><button data-preset="mobile">移动 450 MHz</button></div></div>
       </section>
 
       <section class="workspace">
@@ -67,7 +67,7 @@
         </div>
       </section>
     </main>
-    <footer><span>RF PATH LAB / PRIVATE ENGINEERING TOOL</span><span>结果单位：dBm · dB · km · MHz</span></footer>
+    <footer><span>RF PATH LAB / STATIC ENGINEERING TOOL · GITHUB PAGES</span><span>结果单位：dBm · dB · km · MHz</span></footer>
   </div>
   <script type="module" src="./src/app.mjs"></script>
 </body>
